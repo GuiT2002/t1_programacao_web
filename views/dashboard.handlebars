@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard – Cara-a-Cara</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+
+<body data-page="dashboard" data-user="{{usuario}}">
+    <div class="container py-4">
+        <h3 class="mb-4">Bem-vindo, {{usuario}}</h3>
+
+        <h5>Jogadores on-line</h5>
+        <ul id="ulOnline" class="list-group mb-4">
+            <!-- preenchido via JS -->
+        </ul>
+
+        <nav class="mb-3">
+            <a class="btn btn-outline-secondary me-2" href="/sobre">Sobre</a>
+            <a class="btn btn-outline-secondary me-2" href="/contato">Contato</a>
+            <a class="btn btn-outline-danger" href="/logoff">Sair</a>
+        </nav>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
