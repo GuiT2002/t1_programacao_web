@@ -1,111 +1,73 @@
-/*  public/app.js ------------------------------------------------------------
-    Cliente WebSocket – Jogo Cara-a-Cara
-    • Mostra nomes em vez de “rosto #n”
------------------------------------------------------------------------------*/
-
-/* ---------------------- Mapeamento índice → nome ------------------------- */
-const NAMES = [
-  "Susanna","alfredo","filippo","chirara","paolo","giuseppe",
+const NAMES=["Susanna","alfredo","filippo","chirara","paolo","giuseppe",
   "samuele","giorgio","anita","manuele","marco","riccardo",
   "tommaso","alessandro","carlo","ernesto","guglielmo","maria",
-  "roberto","pietro","davide","bernardo","anna","giacomo"
-];
-const nameOf = i => NAMES[i - 1];        // i de 1 a 24
+  "roberto","pietro","davide","bernardo","anna","giacomo"];
 
-/* ---------------------------- Variáveis globais -------------------------- */
-let ws;
-let currentUser = null;
-let dash = null;     // elementos da página dashboard
-let game = null;     // elementos da página jogo
+const nameOf=i=>NAMES[i-1];
 
-document.addEventListener("DOMContentLoaded", () => {
-    const body = document.body;
-    currentUser = body.dataset.user;
-    if (!currentUser) return;
+/* --------- variáveis globais --------- */
+let ws,currentUser=null,dash=null,game=null;
 
-    initWebSocket();
-
-    if (body.dataset.page === "dashboard") initDashboard();
-    if (body.dataset.page === "jogo")      initGame();
+document.addEventListener("DOMContentLoaded",()=>{
+  const body=document.body;
+  currentUser=body.dataset.user; if(!currentUser) return;
+  wsInit();
+  if(body.dataset.page==="dashboard") initDash();
+  if(body.dataset.page==="jogo")      initGame();
 });
 
-/* ------------------------------- WebSocket ------------------------------- */
-function initWebSocket() {
-    ws = new WebSocket(`ws://${location.hostname}:8080`);
-    ws.addEventListener("open", () =>
-        ws.send(JSON.stringify({ type:"register", user:currentUser })));
-    ws.addEventListener("message", handleWS);
-    ws.addEventListener("close", () => setTimeout(initWebSocket, 1000));
+/* --------- WebSocket ---------- */
+function wsInit(){
+  ws=new WebSocket(`ws://${location.hostname}:8080`);
+  ws.addEventListener("open",()=>ws.send(JSON.stringify({type:"register",user:currentUser})));
+  ws.addEventListener("message",wsHandle);
+  ws.addEventListener("close",()=>setTimeout(wsInit,1000));
 }
 
-function handleWS(ev) {
-    const msg = JSON.parse(ev.data);
+function wsHandle(ev){
+  const msg=JSON.parse(ev.data);
 
-    /* --- eventos comuns ao dashboard --- */
-    if (dash) {
-        if (msg.type === "online") updateOnline(msg.list);
-        if (msg.type === "invite") inviteReceived(msg.from);
-    }
-
-    /* --- início de partida --- */
-    if (msg.type === "start") {
-        if (game) startGame(msg);
-        else {
-            sessionStorage.setItem("caraStart", ev.data);
-            location.href = "/jogo";
-        }
-        return;
-    }
-
-    /* --- eventos da partida --- */
-    if (!game) return;
-
-    switch (msg.type) {
-        case "question":
-            log(`${msg.from} pergunta: ${msg.text}`);
-            enableAnswer();
-            break;
-        case "answer":
-            log(`${msg.from} respondeu: ${msg.text}`);
-            unlockQuestion();
-            break;
-        case "result":
-            finish(msg.won ? "Você venceu!" : "Você perdeu!");
-            break;
-        case "abort":
-            finish("Conexão do adversário perdida");
-            break;
-    }
+  if(dash){
+    if(msg.type==="online") updateOnline(msg.list);
+    if(msg.type==="invite") invite(msg.from);
+  }
+  if(msg.type==="start"){
+    if(game) startGame(msg);
+    else{ sessionStorage.setItem("caraStart",ev.data); location.href="/jogo"; }
+    return;
+  }
+  if(!game) return;
+  switch(msg.type){
+    case"question": log(`${msg.from} pergunta: ${msg.text}`); enableAnswer(); break;
+    case"answer":   log(`${msg.from} respondeu: ${msg.text}`); unlockQuestion(); break;
+    case"result":   finish(msg.won?"Você venceu!":"Você perdeu!"); break;
+    case"abort":    finish("Conexão perdida"); break;
+  }
 }
 
-/* ------------------------------------------------------------------------- */
-/*                                DASHBOARD                                  */
-/* ------------------------------------------------------------------------- */
-function initDashboard() {
-    dash = { ul: document.getElementById("ulOnline") };
+/* -------- DASHBOARD -------- */
+function initDash(){ dash={ul:document.getElementById("ulOnline"), spanWins:document.getElementById("myWins")}; }
+
+function updateOnline(list){
+  dash.ul.innerHTML="";
+  list.forEach(({id,wins})=>{
+    if(id===currentUser){ dash.spanWins.textContent=wins; return; }
+    const li=document.createElement("li");
+    li.className="list-group-item list-group-item-action";
+    li.textContent=`${id} (${wins})`;
+    li.style.cursor="pointer";
+    li.onclick=()=>{ ws.send(JSON.stringify({type:"invite",to:id})); alert("Convite enviado a "+id); };
+    dash.ul.appendChild(li);
+  });
 }
 
-function updateOnline(list) {
-    dash.ul.innerHTML = "";
-    list.filter(id => id !== currentUser).forEach(id => {
-        const li = document.createElement("li");
-        li.className = "list-group-item list-group-item-action";
-        li.textContent = id;
-        li.style.cursor = "pointer";
-        li.onclick = () => {
-            ws.send(JSON.stringify({ type:"invite", to:id }));
-            alert("Convite enviado a " + id);
-        };
-        dash.ul.appendChild(li);
-    });
+function invite(from){
+  if(confirm(`Jogador ${from} quer jogar com você. Aceitar?`)){
+    ws.send(JSON.stringify({type:"accept",from}));
+    alert("Aguardando o início da partida…");
+  }
 }
 
-function inviteReceived(from) {
-    if (confirm(`Jogador ${from} quer jogar com você. Aceitar?`)) {
-        ws.send(JSON.stringify({ type:"accept", from }));
-        alert("Aguardando o início da partida…");
-    }
-}
 
 /* ------------------------------------------------------------------------- */
 /*                                   JOGO                                    */
